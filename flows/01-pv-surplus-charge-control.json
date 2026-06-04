@@ -1,0 +1,443 @@
+[
+    {
+        "id": "eb5bb401c7b92a3e",
+        "type": "tab",
+        "label": "PV_Surplus_Charge_Control",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "victron-client-id",
+        "type": "victron-client",
+        "showValues": true,
+        "contextStore": true,
+        "enablePolling": false
+    },
+    {
+        "id": "4220a2c8c869a9a7",
+        "type": "victron-input-gridmeter",
+        "z": "eb5bb401c7b92a3e",
+        "service": "com.victronenergy.grid/40",
+        "path": "/Ac/Power",
+        "serviceObj": {
+            "service": "com.victronenergy.grid/40",
+            "name": "VM-3P75CT HQ2414KZCDN",
+            "communityTag": "gridmeter"
+        },
+        "pathObj": {
+            "path": "/Ac/Power",
+            "type": "float",
+            "name": "Power (W)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 1,
+        "conditionalMode": false,
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "debounce": "2000",
+        "x": 260,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8ad8793df64ce002",
+        "type": "inject",
+        "z": "eb5bb401c7b92a3e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "900",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 620,
+        "wires": [
+            [
+                "ac28ca0453ddd64b"
+            ]
+        ]
+    },
+    {
+        "id": "ac28ca0453ddd64b",
+        "type": "http request",
+        "z": "eb5bb401c7b92a3e",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=39.801976063408915&longitude=26.21257852241156&current_weather=true",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 610,
+        "y": 620,
+        "wires": [
+            [
+                "471466f2e5f24e6e"
+            ]
+        ]
+    },
+    {
+        "id": "471466f2e5f24e6e",
+        "type": "function",
+        "z": "eb5bb401c7b92a3e",
+        "name": "weather_condition",
+        "func": "// Eğer API'den veri başarıyla gelmişse\nif (msg.payload && msg.payload.current_weather) {\n    \n    // WMO (Dünya Meteoroloji Örgütü) hava durum kodunu al\n    var wmo_code = msg.payload.current_weather.weathercode;\n    var is_cloudy = false;\n    \n    // KOD MANTIĞI:\n    // 0: Açık, 1: Çoğunlukla Açık, 2: Parçalı Bulutlu (Paneller iyi üretir)\n    // 3: Tam Kapalı / Çok Bulutlu (Üretim düşer)\n    // 45 ve üzeri: Sis, Yağmur, Kar, Fırtına vb. (Üretim çöker)\n    \n    if (wmo_code === 3 || wmo_code >= 45) {\n        // Hava kötü, sistemi uyar!\n        is_cloudy = true;\n    } else {\n        // Hava güneşli veya panel için yeterli\n        is_cloudy = false;\n    }\n    \n    // Bu sonucu hafızaya kazı (Sizin \"Akıllı Vana\" düğümünüz burayı okuyacak)\n    flow.set('is_cloudy', is_cloudy);\n    \n    // Debug ekranında durumu rahatça okuyabilmeniz için mesajı düzenle\n    msg.payload = \"Geyikli WMO Kodu: \" + wmo_code + \" | Batarya Kurtarma Modu (Bulut): \" + is_cloudy;\n    return msg;\n    \n} else {\n    // İnternet koparsa veya API yanıt vermezse varsayılan olarak güneşli (false) kabul et\n    flow.set('is_cloudy', false);\n    return null;\n}",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 620,
+        "wires": [
+            [
+                "4ffe74e693f1e516"
+            ]
+        ]
+    },
+    {
+        "id": "4ffe74e693f1e516",
+        "type": "debug",
+        "z": "eb5bb401c7b92a3e",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1120,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "3d29a54aba8e99e7",
+        "type": "victron-output-dess",
+        "z": "eb5bb401c7b92a3e",
+        "service": "com.victronenergy.settings",
+        "path": "/Settings/DynamicEss/Mode",
+        "serviceObj": {
+            "service": "com.victronenergy.settings",
+            "name": "Venus settings",
+            "communityTag": "dess"
+        },
+        "pathObj": {
+            "path": "/Settings/DynamicEss/Mode",
+            "type": "enum",
+            "name": "Dynamic ESS mode",
+            "enum": {
+                "0": "Off",
+                "1": "Auto",
+                "4": "Node-RED"
+            },
+            "mode": "both"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 0,
+        "conditionalMode": false,
+        "condition1Operator": ">",
+        "condition2Enabled": false,
+        "condition2Service": "",
+        "condition2Path": "",
+        "condition2Operator": ">",
+        "logicOperator": "AND",
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "outputOnChange": false,
+        "debounce": 2000,
+        "x": 950,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "07f85197cd5fd130",
+        "type": "inject",
+        "z": "eb5bb401c7b92a3e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 720,
+        "wires": [
+            [
+                "0d525ea750106767"
+            ]
+        ]
+    },
+    {
+        "id": "0d525ea750106767",
+        "type": "function",
+        "z": "eb5bb401c7b92a3e",
+        "name": "DESS_control",
+        "func": "// Şu anki saati al\nvar date = new Date();\nvar hour = date.getHours();\n\n// KURAL: Gündüz Güneş Saatleri (Örn: 08:00 ile 17:00 arası)\nif (hour >= 8 && hour < 17) {\n    // 0 = DESS'i KAPAT (Off modu). \n    // Sistem standart ESS'ye döner ve bizim \"Akıllı Vana\" (100 Amper kuralı) engelsiz çalışır.\n    msg.payload = 0; \n} \n// KURAL: Gece Saatleri (17:00'den sabah 08:00'e kadar)\nelse {\n    // 1 = DESS AUTO modu. \n    // Güneş battı, yapay zeka devralıp gece ticaretini/optimizasyonunu kendi yönetsin.\n    msg.payload = 1; \n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 720,
+        "wires": [
+            [
+                "3d29a54aba8e99e7",
+                "ebe73cb029300064"
+            ]
+        ]
+    },
+    {
+        "id": "ebe73cb029300064",
+        "type": "debug",
+        "z": "eb5bb401c7b92a3e",
+        "d": true,
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "2e89446fedf5d1bd",
+        "type": "victron-input-battery",
+        "z": "eb5bb401c7b92a3e",
+        "service": "com.victronenergy.battery/512",
+        "path": "/Dc/0/Current",
+        "serviceObj": {
+            "service": "com.victronenergy.battery/512",
+            "name": "SolarMD-SS143",
+            "communityTag": "battery"
+        },
+        "pathObj": {
+            "path": "/Dc/0/Current",
+            "type": "float",
+            "name": "Battery current (A)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 1,
+        "conditionalMode": false,
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "debounce": "2000",
+        "x": 260,
+        "y": 320,
+        "wires": [
+            [
+                "212ba17d22bc2f6c"
+            ]
+        ]
+    },
+    {
+        "id": "c360b095a0e11817",
+        "type": "victron-input-gridmeter",
+        "z": "eb5bb401c7b92a3e",
+        "service": "com.victronenergy.grid/40",
+        "path": "/Ac/Power",
+        "serviceObj": {
+            "service": "com.victronenergy.grid/40",
+            "name": "VM-3P75CT HQ2414KZCDN",
+            "communityTag": "gridmeter"
+        },
+        "pathObj": {
+            "path": "/Ac/Power",
+            "type": "float",
+            "name": "Power (W)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 1,
+        "conditionalMode": false,
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "debounce": "2000",
+        "x": 260,
+        "y": 220,
+        "wires": [
+            [
+                "a1c3eb022e886bac"
+            ]
+        ]
+    },
+    {
+        "id": "a1c3eb022e886bac",
+        "type": "function",
+        "z": "eb5bb401c7b92a3e",
+        "name": "Store: grid_w",
+        "func": "flow.set('grid_w', msg.payload); return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "212ba17d22bc2f6c",
+        "type": "function",
+        "z": "eb5bb401c7b92a3e",
+        "name": "Store: batt_a",
+        "func": "flow.set('batt_a', msg.payload); return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e1495e1ae6409cd1",
+        "type": "inject",
+        "z": "eb5bb401c7b92a3e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 420,
+        "wires": [
+            [
+                "457591ed8d676a80"
+            ]
+        ]
+    },
+    {
+        "id": "457591ed8d676a80",
+        "type": "function",
+        "z": "eb5bb401c7b92a3e",
+        "name": "Calculate MaxChargeCurrent",
+        "func": "// Arka planda toplanan verileri al\nvar grid_w = flow.get('grid_w') || 0;\nvar batt_a = flow.get('batt_a') || 0;\nvar is_cloudy = flow.get('is_cloudy') || false;\n\n// 1. Şebekeye satılan güç (Victron'da eksi(-) olan bu değeri hesap için pozitife çeviriyoruz)\nvar export_w = 0;\nif (grid_w < 0) {\n    export_w = Math.abs(grid_w); \n}\n\n// 2. Bataryaya giden şarj gücü (Pozitif akımı Watt'a çeviriyoruz, ortalama 52V kabul ederek)\nvar charge_w = 0;\nif (batt_a > 0) {\n    charge_w = batt_a * 52;\n}\n\n// 3. O anki GERÇEK GÜNEŞ FAZLALIĞI = Şebekeye giden + Bataryanın çektiği\nvar total_surplus_w = export_w + charge_w;\n\nvar limit = 0;\n\n// KURAL 1: Hava bulutluysa direkt kurtarma modu\nif (is_cloudy === true) {\n    limit = 100;\n} \n// KURAL 2: Matematiksel Denge\nelse {\n    // Hedefimiz şebekeye yaklaşık 6800W satmak. Kalanı bataryanın hakkıdır.\n    var available_for_battery_w = total_surplus_w - 6800;\n    \n    // Eğer şebekeyi 6800W doyurduktan sonra elimizde güç kalıyorsa:\n    if (available_for_battery_w > 0) {\n        limit = available_for_battery_w / 52; // Çıkan Watt'ı tekrar Amper'e (A) çevirip vanayı ayarla\n    } else {\n        limit = 0; // Şebeke henüz 6800'e ulaşmadı, bataryaya geçiş yok!\n    }\n}\n\n// Güvenlik sınırları\nif (limit < 0) limit = 0;\nif (limit > 100) limit = 100; \n\n// Küsüratlı rakamları (örn: 12.45A) yuvarla ve Victron DVCC'ye gönder\nmsg.payload = Math.round(limit);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 420,
+        "wires": [
+            [
+                "a44f6b59dbb93419"
+            ]
+        ]
+    },
+    {
+        "id": "a44f6b59dbb93419",
+        "type": "victron-output-custom",
+        "z": "eb5bb401c7b92a3e",
+        "service": "com.victronenergy.settings",
+        "path": "/Settings/SystemSetup/MaxChargeCurrent",
+        "serviceObj": {
+            "service": "com.victronenergy.settings",
+            "name": "com.victronenergy.settings"
+        },
+        "pathObj": {
+            "path": "/Settings/SystemSetup/MaxChargeCurrent",
+            "name": "/Settings/SystemSetup/MaxChargeCurrent",
+            "type": "number",
+            "value": 50
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 0,
+        "conditionalMode": false,
+        "condition1Operator": ">",
+        "condition2Enabled": false,
+        "condition2Service": "",
+        "condition2Path": "",
+        "condition2Operator": ">",
+        "logicOperator": "AND",
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "outputOnChange": false,
+        "debounce": 2000,
+        "x": 1040,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "7cee168ddb5cdf18",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@victronenergy/node-red-contrib-victron": "1.6.64"
+        }
+    }
+]
